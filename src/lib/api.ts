@@ -37,7 +37,7 @@ api.interceptors.response.use(
       if (status === 401) {
         // Token expired / unauthorized → redirect ke login
         localStorage.removeItem('token')
-        window.location.href = '/login'
+        window.location.href = '/masuk'
       }
     }
     return Promise.reject(error)

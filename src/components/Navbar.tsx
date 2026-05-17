@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Home,
@@ -10,12 +10,13 @@ import {
   X,
   LogIn,
   UserPlus,
+  LogOut,
 } from 'lucide-react'
 
 const navLinks = [
   { label: 'Beranda', href: '/', icon: Home },
   { label: 'Lapor', href: '/lapor', icon: FileText },
-  { label: 'Progres', href: '/progres', icon: BarChart3 },
+  { label: 'Status', href: '/progres', icon: BarChart3 },
   { label: 'FAQ', href: '/faq', icon: HelpCircle },
 ]
 
@@ -27,7 +28,20 @@ interface NavbarProps {
 export default function Navbar({ forceScrolled = false }: NavbarProps) {
   const [scrolled, setScrolled] = useState(forceScrolled)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [user, setUser] = useState<{ nama: string } | null>(null)
+  const [showProfileMenu, setShowProfileMenu] = useState(false)
   const location = useLocation()
+  const navigate = useNavigate()
+
+  // Check login state
+  useEffect(() => {
+    const stored = localStorage.getItem('user')
+    if (stored) {
+      try { setUser(JSON.parse(stored)) } catch { setUser(null) }
+    } else {
+      setUser(null)
+    }
+  }, [location]) // re-check on route change
 
   useEffect(() => {
     if (forceScrolled) {
@@ -35,12 +49,22 @@ export default function Navbar({ forceScrolled = false }: NavbarProps) {
       return
     }
     const handleScroll = () => setScrolled(window.scrollY > 20)
-    handleScroll() // check initial
+    handleScroll()
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [forceScrolled])
 
   const isActive = (href: string) => location.pathname === href
+
+  const handleLogout = () => {
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    setUser(null)
+    setShowProfileMenu(false)
+    navigate('/')
+  }
+
+  const initial = user?.nama?.charAt(0).toUpperCase() || '?'
 
   return (
     <motion.nav
@@ -97,28 +121,71 @@ export default function Navbar({ forceScrolled = false }: NavbarProps) {
             ))}
           </div>
 
-          {/* Auth Buttons (Desktop) */}
+          {/* Auth / Profile (Desktop) */}
           <div className="hidden md:flex items-center gap-2">
-            <Link
-              to="/masuk"
-              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                scrolled
-                  ? 'text-navy-700 hover:text-navy-900 hover:bg-navy-50'
-                  : 'text-white/90 hover:text-white'
-              }`}
-            >
-              Masuk
-            </Link>
-            <Link
-              to="/daftar"
-              className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
-                scrolled
-                  ? 'bg-navy-800 text-white hover:bg-navy-900 shadow-md shadow-navy-800/20'
-                  : 'bg-white text-navy-900 hover:bg-white/90 shadow-md shadow-black/10'
-              }`}
-            >
-              Daftar
-            </Link>
+            {user ? (
+              /* Profile Avatar */
+              <div className="relative">
+                <button
+                  onClick={() => setShowProfileMenu(!showProfileMenu)}
+                  className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm transition-all cursor-pointer ${
+                    scrolled
+                      ? 'bg-gradient-to-br from-teal-500 to-teal-600 text-white shadow-md shadow-teal-500/30'
+                      : 'bg-white text-navy-900 shadow-md shadow-black/10'
+                  }`}
+                >
+                  {initial}
+                </button>
+
+                {/* Dropdown */}
+                <AnimatePresence>
+                  {showProfileMenu && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute right-0 top-12 w-48 bg-white rounded-xl shadow-xl shadow-navy-900/10 border border-navy-100 overflow-hidden"
+                    >
+                      <div className="px-4 py-3 border-b border-navy-100">
+                        <p className="text-sm font-semibold text-navy-800 truncate">{user.nama}</p>
+                      </div>
+                      <button
+                        onClick={handleLogout}
+                        className="w-full flex items-center gap-2 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                      >
+                        <LogOut size={16} />
+                        Keluar
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            ) : (
+              /* Guest buttons */
+              <>
+                <Link
+                  to="/masuk"
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                    scrolled
+                      ? 'text-navy-700 hover:text-navy-900 hover:bg-navy-50'
+                      : 'text-white/90 hover:text-white'
+                  }`}
+                >
+                  Masuk
+                </Link>
+                <Link
+                  to="/daftar"
+                  className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
+                    scrolled
+                      ? 'bg-navy-800 text-white hover:bg-navy-900 shadow-md shadow-navy-800/20'
+                      : 'bg-white text-navy-900 hover:bg-white/90 shadow-md shadow-black/10'
+                  }`}
+                >
+                  Daftar
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -160,23 +227,43 @@ export default function Navbar({ forceScrolled = false }: NavbarProps) {
                   {link.label}
                 </Link>
               ))}
-              <div className="pt-3 border-t border-navy-100 flex gap-2">
-                <Link
-                  to="/masuk"
-                  onClick={() => setMobileOpen(false)}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-navy-700 border border-navy-200 hover:bg-navy-50 transition-colors"
-                >
-                  <LogIn size={16} />
-                  Masuk
-                </Link>
-                <Link
-                  to="/daftar"
-                  onClick={() => setMobileOpen(false)}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-navy-800 text-white hover:bg-navy-900 transition-colors"
-                >
-                  <UserPlus size={16} />
-                  Daftar
-                </Link>
+              <div className="pt-3 border-t border-navy-100">
+                {user ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-3 px-4 py-2">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center text-white font-bold text-sm">
+                        {initial}
+                      </div>
+                      <span className="text-sm font-semibold text-navy-800 truncate">{user.nama}</span>
+                    </div>
+                    <button
+                      onClick={() => { handleLogout(); setMobileOpen(false) }}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-red-600 border border-red-200 hover:bg-red-50 transition-colors cursor-pointer"
+                    >
+                      <LogOut size={16} />
+                      Keluar
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <Link
+                      to="/masuk"
+                      onClick={() => setMobileOpen(false)}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-navy-700 border border-navy-200 hover:bg-navy-50 transition-colors"
+                    >
+                      <LogIn size={16} />
+                      Masuk
+                    </Link>
+                    <Link
+                      to="/daftar"
+                      onClick={() => setMobileOpen(false)}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-navy-800 text-white hover:bg-navy-900 transition-colors"
+                    >
+                      <UserPlus size={16} />
+                      Daftar
+                    </Link>
+                  </div>
+                )}
               </div>
             </div>
           </motion.div>

@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { motion } from 'framer-motion'
-import { Link } from 'react-router-dom'
-import { UserPlus, Mail, Lock, Eye, EyeOff, Phone, User, Sparkles, Target, Users } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Link, useNavigate } from 'react-router-dom'
+import { UserPlus, Mail, Lock, Eye, EyeOff, Phone, User, Sparkles, Target, Users, CheckCircle2, X } from 'lucide-react'
 import Navbar from '@/components/Navbar'
+import api from '@/lib/api'
 
 const FEATURES = [
   { icon: Sparkles, title: 'Gratis Selamanya', desc: 'Tidak ada biaya pendaftaran atau langganan' },
@@ -11,6 +12,7 @@ const FEATURES = [
 ]
 
 export default function DaftarPage() {
+  const navigate = useNavigate()
   const [nama, setNama] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
@@ -18,10 +20,73 @@ export default function DaftarPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPass, setShowPass] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [showSuccess, setShowSuccess] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    alert('Pendaftaran berhasil! (demo)')
+    setError('')
+
+    // Validasi
+    if (!nama || !email || !password) {
+      setError('Nama, email, dan kata sandi wajib diisi')
+      return
+    }
+
+    // Validasi email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      setError('Format email tidak valid')
+      return
+    }
+
+    // Validasi no HP (jika diisi)
+    if (phone) {
+      const cleanPhone = phone.replace(/\D/g, '')
+      if (!/^(08|62)/.test(cleanPhone) || cleanPhone.length > 14) {
+        setError('Nomor HP harus diawali 08 atau 62, maksimal 14 digit')
+        return
+      }
+    }
+
+    // Validasi password
+    if (password.length < 8) {
+      setError('Kata sandi minimal 8 karakter')
+      return
+    }
+    if (!/[a-z]/.test(password)) {
+      setError('Kata sandi harus mengandung huruf kecil')
+      return
+    }
+    if (!/[A-Z]/.test(password)) {
+      setError('Kata sandi harus mengandung huruf kapital')
+      return
+    }
+    if (!/[^a-zA-Z0-9]/.test(password)) {
+      setError('Kata sandi harus mengandung simbol (contoh: !@#$%)')
+      return
+    }
+
+    if (password !== confirmPassword) {
+      setError('Kata sandi tidak cocok')
+      return
+    }
+
+    setLoading(true)
+    try {
+      await api.post('/auth/register', { nama, email, phone, password })
+      setShowSuccess(true)
+      // Redirect ke halaman masuk setelah 1 detik
+      setTimeout(() => {
+        navigate('/masuk')
+      }, 1200)
+    } catch (err: any) {
+      const msg = err.response?.data?.error || 'Terjadi kesalahan, coba lagi'
+      setError(msg)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -91,8 +156,11 @@ export default function DaftarPage() {
                   <div className="relative">
                     <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-navy-400" />
                     <input type="text" value={nama} onChange={(e) => setNama(e.target.value)} placeholder="Masukkan nama lengkap"
-                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-navy-200 text-navy-800 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-teal-400/50 focus:border-teal-400 transition-all" />
+                      className={`w-full pl-10 pr-4 py-3 rounded-xl border text-navy-800 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 transition-all ${nama.length > 0 && nama.length < 3 ? 'border-red-300 focus:ring-red-400/50 focus:border-red-400' : 'border-navy-200 focus:ring-teal-400/50 focus:border-teal-400'}`} />
                   </div>
+                  {nama.length > 0 && nama.length < 3 && (
+                    <p className="text-xs text-red-500 mt-1">Nama minimal 3 karakter</p>
+                  )}
                 </div>
 
                 <div>
@@ -100,17 +168,26 @@ export default function DaftarPage() {
                   <div className="relative">
                     <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-navy-400" />
                     <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="contoh@email.com"
-                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-navy-200 text-navy-800 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-teal-400/50 focus:border-teal-400 transition-all" />
+                      className={`w-full pl-10 pr-4 py-3 rounded-xl border text-navy-800 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 transition-all ${email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? 'border-red-300 focus:ring-red-400/50 focus:border-red-400' : 'border-navy-200 focus:ring-teal-400/50 focus:border-teal-400'}`} />
                   </div>
+                  {email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && (
+                    <p className="text-xs text-red-500 mt-1">Format email tidak valid</p>
+                  )}
                 </div>
 
                 <div>
                   <label className="block text-sm font-semibold text-navy-700 mb-2">Nomor Telepon</label>
                   <div className="relative">
                     <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-navy-400" />
-                    <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="08xxxxxxxxxx"
-                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-navy-200 text-navy-800 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-teal-400/50 focus:border-teal-400 transition-all" />
+                    <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="08xxxxxxxxxx" maxLength={14}
+                      className={`w-full pl-10 pr-4 py-3 rounded-xl border text-navy-800 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 transition-all ${phone && (!/^(08|62)/.test(phone.replace(/\D/g, '')) || phone.replace(/\D/g, '').length > 14) ? 'border-red-300 focus:ring-red-400/50 focus:border-red-400' : 'border-navy-200 focus:ring-teal-400/50 focus:border-teal-400'}`} />
                   </div>
+                  {phone && !/^(08|62)/.test(phone.replace(/\D/g, '')) && (
+                    <p className="text-xs text-red-500 mt-1">Nomor HP harus diawali 08 atau 62</p>
+                  )}
+                  {phone && /^(08|62)/.test(phone.replace(/\D/g, '')) && phone.replace(/\D/g, '').length > 14 && (
+                    <p className="text-xs text-red-500 mt-1">Maksimal 14 digit</p>
+                  )}
                 </div>
 
                 <div>
@@ -118,11 +195,27 @@ export default function DaftarPage() {
                   <div className="relative">
                     <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-navy-400" />
                     <input type={showPass ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Minimal 8 karakter"
-                      className="w-full pl-10 pr-12 py-3 rounded-xl border border-navy-200 text-navy-800 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-teal-400/50 focus:border-teal-400 transition-all" />
+                      className={`w-full pl-10 pr-12 py-3 rounded-xl border text-navy-800 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 transition-all ${password && (password.length < 8 || !/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/[^a-zA-Z0-9]/.test(password)) ? 'border-red-300 focus:ring-red-400/50 focus:border-red-400' : 'border-navy-200 focus:ring-teal-400/50 focus:border-teal-400'}`} />
                     <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-4 top-1/2 -translate-y-1/2 text-navy-400 hover:text-navy-600">
                       {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                   </div>
+                  {password && (
+                    <div className="mt-1.5 space-y-0.5">
+                      <p className={`text-xs ${password.length >= 8 ? 'text-teal-600' : 'text-red-500'}`}>
+                        {password.length >= 8 ? '✓' : '✗'} Minimal 8 karakter
+                      </p>
+                      <p className={`text-xs ${/[a-z]/.test(password) ? 'text-teal-600' : 'text-red-500'}`}>
+                        {/[a-z]/.test(password) ? '✓' : '✗'} Huruf kecil
+                      </p>
+                      <p className={`text-xs ${/[A-Z]/.test(password) ? 'text-teal-600' : 'text-red-500'}`}>
+                        {/[A-Z]/.test(password) ? '✓' : '✗'} Huruf kapital
+                      </p>
+                      <p className={`text-xs ${/[^a-zA-Z0-9]/.test(password) ? 'text-teal-600' : 'text-red-500'}`}>
+                        {/[^a-zA-Z0-9]/.test(password) ? '✓' : '✗'} Simbol (!@#$%)
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -130,32 +223,35 @@ export default function DaftarPage() {
                   <div className="relative">
                     <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-navy-400" />
                     <input type={showConfirm ? 'text' : 'password'} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Ulangi kata sandi"
-                      className="w-full pl-10 pr-12 py-3 rounded-xl border border-navy-200 text-navy-800 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-teal-400/50 focus:border-teal-400 transition-all" />
+                      className={`w-full pl-10 pr-12 py-3 rounded-xl border text-navy-800 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 transition-all ${confirmPassword && confirmPassword !== password ? 'border-red-300 focus:ring-red-400/50 focus:border-red-400' : 'border-navy-200 focus:ring-teal-400/50 focus:border-teal-400'}`} />
                     <button type="button" onClick={() => setShowConfirm(!showConfirm)} className="absolute right-4 top-1/2 -translate-y-1/2 text-navy-400 hover:text-navy-600">
                       {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                   </div>
+                  {confirmPassword && confirmPassword !== password && (
+                    <p className="text-xs text-red-500 mt-1">Kata sandi tidak cocok</p>
+                  )}
                 </div>
 
                 <p className="text-xs text-navy-500">
                   Saya menyetujui <a href="#" className="text-teal-600 font-semibold hover:underline">Syarat & Ketentuan</a> serta <a href="#" className="text-teal-600 font-semibold hover:underline">Kebijakan Privasi</a>
                 </p>
 
-                <button type="submit"
-                  className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-gradient-to-r from-teal-500 to-teal-600 text-white font-semibold text-sm shadow-lg shadow-teal-600/20 hover:from-teal-600 hover:to-teal-700 active:scale-[0.98] transition-all cursor-pointer">
-                  Daftar Sekarang
-                </button>
+                {/* Error Message */}
+                {error && (
+                  <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
+                    <X size={16} className="shrink-0" />
+                    {error}
+                  </div>
+                )}
 
-                <div className="relative flex items-center gap-3 my-1">
-                  <div className="flex-1 h-px bg-navy-100" />
-                  <span className="text-[11px] font-semibold text-navy-400 tracking-widest">atau</span>
-                  <div className="flex-1 h-px bg-navy-100" />
-                </div>
-
-                <button type="button"
-                  className="w-full flex items-center justify-center gap-3 py-3 rounded-xl border border-navy-200 text-navy-700 font-semibold text-sm hover:bg-navy-50 transition-colors cursor-pointer">
-                  <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-                  Daftar dengan Google
+                <button type="submit" disabled={loading}
+                  className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-gradient-to-r from-teal-500 to-teal-600 text-white font-semibold text-sm shadow-lg shadow-teal-600/20 hover:from-teal-600 hover:to-teal-700 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed">
+                  {loading ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    'Daftar Sekarang'
+                  )}
                 </button>
 
                 <p className="text-center text-sm text-navy-500 pt-1">
@@ -167,6 +263,22 @@ export default function DaftarPage() {
           </motion.div>
         </div>
       </div>
+
+      {/* Success Toast */}
+      <AnimatePresence>
+        {showSuccess && (
+          <motion.div
+            initial={{ opacity: 0, y: -30 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -30 }}
+            transition={{ duration: 0.3 }}
+            className="fixed top-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-6 py-3 bg-teal-600 text-white rounded-xl shadow-lg shadow-teal-600/30"
+          >
+            <CheckCircle2 size={20} />
+            <span className="font-semibold text-sm">Pendaftaran berhasil! Mengalihkan...</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

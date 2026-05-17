@@ -8,6 +8,7 @@ import FaqPage from '@/pages/FaqPage'
 import MasukPage from '@/pages/MasukPage'
 import DaftarPage from '@/pages/DaftarPage'
 import ProgresPage from '@/pages/ProgresPage'
+import ScrollToTop from '@/components/ScrollToTop'
 
 function App() {
   const [loading, setLoading] = useState(true)
@@ -18,6 +19,7 @@ function App() {
 
   return (
     <BrowserRouter>
+      <ScrollToTop />
       {/* Loading Splash */}
       {loading && <LoadingSplash onComplete={handleLoadComplete} />}
 

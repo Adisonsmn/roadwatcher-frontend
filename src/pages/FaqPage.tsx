@@ -149,7 +149,7 @@ export default function FaqPage() {
             <h3 className="text-xl md:text-2xl font-heading font-bold text-white mb-2">Masih Ada Pertanyaan?</h3>
             <p className="text-navy-300 text-sm mb-6 max-w-md mx-auto">Tim support kami siap membantu Anda 24/7. Jangan ragu untuk menghubungi kami!</p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-6">
-              <a href="https://wa.me/6281234567890" target="_blank" rel="noopener noreferrer"
+              <a href="https://wa.me/6285" target="_blank" rel="noopener noreferrer"
                 className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-white text-navy-800 font-semibold text-sm hover:bg-navy-50 transition-colors w-full sm:w-auto">
                 💬 WhatsApp
               </a>

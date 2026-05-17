@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Link } from 'react-router-dom'
-import { Lock, Mail, Eye, EyeOff, ArrowRight, CheckCircle, Zap, Shield } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { Lock, Mail, Eye, EyeOff, ArrowRight, CheckCircle, Zap, Shield, X } from 'lucide-react'
 import Navbar from '@/components/Navbar'
+import api from '@/lib/api'
 
 const FEATURES = [
   { icon: CheckCircle, title: 'Tracking Real-Time', desc: 'Pantau status laporan Anda kapan saja' },
@@ -17,15 +18,62 @@ const STATS = [
 ]
 
 export default function MasukPage() {
+  const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPass, setShowPass] = useState(false)
   const [remember, setRemember] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // TODO: integrate with API
-    alert('Login berhasil! (demo)')
+    setError('')
+
+    if (!email || !password) {
+      setError('Email dan kata sandi wajib diisi')
+      return
+    }
+
+    // Validasi email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      setError('Format email tidak valid')
+      return
+    }
+
+    // Validasi password
+    if (password.length < 8) {
+      setError('Kata sandi minimal 8 karakter')
+      return
+    }
+    if (!/[a-z]/.test(password)) {
+      setError('Kata sandi harus mengandung huruf kecil')
+      return
+    }
+    if (!/[A-Z]/.test(password)) {
+      setError('Kata sandi harus mengandung huruf kapital')
+      return
+    }
+    if (!/[^a-zA-Z0-9]/.test(password)) {
+      setError('Kata sandi harus mengandung simbol (contoh: !@#$%)')
+      return
+    }
+
+    setLoading(true)
+    try {
+      const res = await api.post('/auth/login', { email, password })
+      // Simpan token dan data user
+      localStorage.setItem('token', res.data.token)
+      localStorage.setItem('user', JSON.stringify(res.data.user))
+      // Redirect ke beranda
+      navigate('/')
+    } catch (err: any) {
+      const msg = err.response?.data?.error || 'Terjadi kesalahan, coba lagi'
+      setError(msg)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -90,8 +138,11 @@ export default function MasukPage() {
                   <div className="relative">
                     <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-navy-400" />
                     <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nama@email.com"
-                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-navy-200 bg-white text-navy-800 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-teal-400/50 focus:border-teal-400 transition-all" />
+                      className={`w-full pl-10 pr-4 py-3 rounded-xl border bg-white text-navy-800 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 transition-all ${email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? 'border-red-300 focus:ring-red-400/50 focus:border-red-400' : 'border-navy-200 focus:ring-teal-400/50 focus:border-teal-400'}`} />
                   </div>
+                  {email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && (
+                    <p className="text-xs text-red-500 mt-1">Format email tidak valid</p>
+                  )}
                 </div>
 
                 <div>
@@ -99,11 +150,14 @@ export default function MasukPage() {
                   <div className="relative">
                     <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-navy-400" />
                     <input type={showPass ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Masukkan kata sandi"
-                      className="w-full pl-10 pr-12 py-3 rounded-xl border border-navy-200 bg-white text-navy-800 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-teal-400/50 focus:border-teal-400 transition-all" />
+                      className={`w-full pl-10 pr-12 py-3 rounded-xl border bg-white text-navy-800 text-sm placeholder:text-navy-300 focus:outline-none focus:ring-2 transition-all ${password && (password.length < 8 || !/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/[^a-zA-Z0-9]/.test(password)) ? 'border-red-300 focus:ring-red-400/50 focus:border-red-400' : 'border-navy-200 focus:ring-teal-400/50 focus:border-teal-400'}`} />
                     <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-4 top-1/2 -translate-y-1/2 text-navy-400 hover:text-navy-600">
                       {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                   </div>
+                  {password && (password.length < 8 || !/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/[^a-zA-Z0-9]/.test(password)) && (
+                    <p className="text-xs text-red-500 mt-1">Min 8 karakter, huruf kecil, kapital, dan simbol</p>
+                  )}
                 </div>
 
                 <div className="flex items-center justify-between">
@@ -115,22 +169,22 @@ export default function MasukPage() {
                   <a href="#" className="text-sm font-semibold text-teal-600 hover:text-teal-700">Lupa kata sandi?</a>
                 </div>
 
-                <button type="submit"
-                  className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-gradient-to-r from-teal-500 to-teal-600 text-white font-semibold text-sm shadow-lg shadow-teal-600/20 hover:from-teal-600 hover:to-teal-700 active:scale-[0.98] transition-all cursor-pointer">
-                  Masuk ke Akun <ArrowRight size={16} />
+                <button type="submit" disabled={loading}
+                  className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-gradient-to-r from-teal-500 to-teal-600 text-white font-semibold text-sm shadow-lg shadow-teal-600/20 hover:from-teal-600 hover:to-teal-700 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed">
+                  {loading ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <>Masuk ke Akun <ArrowRight size={16} /></>
+                  )}
                 </button>
 
-                <div className="relative flex items-center gap-3 my-2">
-                  <div className="flex-1 h-px bg-navy-100" />
-                  <span className="text-[11px] font-semibold text-navy-400 tracking-widest">ATAU LANJUTKAN DENGAN</span>
-                  <div className="flex-1 h-px bg-navy-100" />
-                </div>
-
-                <button type="button"
-                  className="w-full flex items-center justify-center gap-3 py-3 rounded-xl border border-navy-200 text-navy-700 font-semibold text-sm hover:bg-navy-50 transition-colors cursor-pointer">
-                  <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-                  Masuk dengan Google
-                </button>
+                {/* Error Message */}
+                {error && (
+                  <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
+                    <X size={16} className="shrink-0" />
+                    {error}
+                  </div>
+                )}
 
                 <p className="text-center text-sm text-navy-500 pt-2">
                   Belum punya akun?{' '}

@@ -1,11 +1,10 @@
 import { motion } from 'framer-motion'
+import { Link } from 'react-router-dom'
 import {
   HelpCircle,
   MessageCircle,
   ArrowRight,
   ExternalLink,
-  Mail,
-  Phone,
 } from 'lucide-react'
 
 export default function HelpSection() {
@@ -75,24 +74,24 @@ export default function HelpSection() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ delay: 0.3, duration: 0.5 }}
-          className="space-y-3 mb-10"
+          className="space-y-3"
         >
           <a
-            href="https://wa.me/6281234567890"
+            href="https://wa.me/6285"
             target="_blank"
             rel="noopener noreferrer"
             className="group flex items-center justify-center gap-3 w-full px-6 py-4 bg-white/10 backdrop-blur-sm border border-white/15 rounded-2xl text-white font-semibold hover:bg-white/20 transition-all duration-200"
           >
             <MessageCircle size={18} className="text-green-400" />
-            Hubungi WhatsApp
+            Hubungi WhatsApp DPUTR
             <ArrowRight
               size={16}
               className="group-hover:translate-x-1 transition-transform text-navy-400"
             />
           </a>
 
-          <a
-            href="#faq"
+          <Link
+            to="/faq"
             className="group flex items-center justify-center gap-3 w-full px-6 py-4 bg-gradient-to-r from-teal-500 to-teal-600 rounded-2xl text-white font-semibold shadow-lg shadow-teal-600/30 hover:shadow-teal-500/50 hover:scale-[1.01] active:scale-[0.99] transition-all duration-200"
           >
             <ExternalLink size={18} />
@@ -101,35 +100,7 @@ export default function HelpSection() {
               size={16}
               className="group-hover:translate-x-1 transition-transform"
             />
-          </a>
-        </motion.div>
-
-        {/* Secondary contacts */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ delay: 0.5, duration: 0.5 }}
-        >
-          <p className="text-navy-500 text-xs tracking-wide mb-3">
-            Atau hubungi kami melalui:
-          </p>
-          <div className="flex items-center justify-center gap-6">
-            <a
-              href="mailto:info@roadwatcher.id"
-              className="flex items-center gap-1.5 text-navy-400 hover:text-teal-300 text-sm transition-colors"
-            >
-              <Mail size={14} />
-              Email
-            </a>
-            <a
-              href="tel:+6281234567890"
-              className="flex items-center gap-1.5 text-navy-400 hover:text-teal-300 text-sm transition-colors"
-            >
-              <Phone size={14} />
-              Telepon
-            </a>
-          </div>
+          </Link>
         </motion.div>
       </div>
     </section>

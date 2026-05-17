@@ -38,7 +38,6 @@ export default function LoadingSplash({
 
   return (
     <AnimatePresence>
-      {phase !== 'exit' || progress < 100 ? null : null}
       <motion.div
         initial={{ opacity: 1 }}
         animate={phase === 'exit' ? { opacity: 0, scale: 1.05 } : { opacity: 1 }}
