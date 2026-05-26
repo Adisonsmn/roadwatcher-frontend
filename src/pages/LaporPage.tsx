@@ -466,7 +466,8 @@ export default function LaporPage() {
 
       await api.post('/reports', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
       navigate('/progres')
-    } catch {
+    } catch (err) {
+      console.error('❌ [LaporPage] Error submitting report:', err)
       showToast({ type: 'error', title: 'Gagal', message: 'Gagal mengirim laporan. Coba lagi.' })
     } finally {
       setLoading(false)

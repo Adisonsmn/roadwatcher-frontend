@@ -63,7 +63,8 @@ export default function ProgresPage() {
     try {
       const res = await api.get('/reports')
       setReports(res.data.reports)
-    } catch {
+    } catch (err) {
+      console.error('❌ [ProgresPage] Error fetching reports:', err)
       setReports([])
     } finally {
       setLoading(false)
