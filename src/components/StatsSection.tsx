@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { ClipboardList, CheckCircle2, Clock, Timer, ThumbsUp } from 'lucide-react'
+import { ClipboardList, CheckCircle2, Timer, ThumbsUp } from 'lucide-react'
 import { useCountUp } from '@/hooks/useCountUp'
 
 function StatCard({

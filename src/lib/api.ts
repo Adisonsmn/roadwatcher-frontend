@@ -34,8 +34,15 @@ api.interceptors.response.use(
     // Handle common errors
     if (error.response) {
       const { status } = error.response
-      if (status === 401) {
-        // Token expired / unauthorized → redirect ke login
+      const originalRequest = error.config
+      
+      // Token expired / unauthorized → redirect ke login
+      // Jangan redirect jika error berasal dari endpoint login
+      // Jangan redirect jika user sedang di halaman admin (admin punya flow sendiri)
+      const isLoginRequest = originalRequest?.url?.includes('/auth/login')
+      const isOnAdminPage = window.location.pathname.startsWith('/admin')
+      
+      if (status === 401 && !isLoginRequest && !isOnAdminPage) {
         localStorage.removeItem('token')
         window.location.href = '/masuk'
       }

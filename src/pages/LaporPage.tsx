@@ -3,13 +3,14 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import {
   Camera, MapPin, FileText, ArrowRight, ArrowLeft, X, Info,
-  CircleOff, Zap, Waves, Building2, Upload, Send, ImageIcon, MapPinned, Locate,
+  CircleOff, Zap, Waves, Building2, Upload, Send, Locate,
 } from 'lucide-react'
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import ExifReader from 'exifreader'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
+import { useToast } from '@/components/Toast'
 import api from '@/lib/api'
 
 // Fix Leaflet default marker icon
@@ -110,8 +111,8 @@ async function extractGPS(file: File): Promise<{ lat: number; lng: number } | nu
     if (lat && lng) {
       const latNum = parseFloat(String(lat))
       const lngNum = parseFloat(String(lng))
-      const latRef = tags?.GPSLatitudeRef?.value?.[0]
-      const lngRef = tags?.GPSLongitudeRef?.value?.[0]
+      const latRef = (tags?.GPSLatitudeRef?.value as any)?.[0]
+      const lngRef = (tags?.GPSLongitudeRef?.value as any)?.[0]
       return {
         lat: latRef === 'S' ? -Math.abs(latNum) : latNum,
         lng: lngRef === 'W' ? -Math.abs(lngNum) : lngNum,
@@ -128,12 +129,21 @@ async function extractGPS(file: File): Promise<{ lat: number; lng: number } | nu
 function StepFoto({ formData, onChange }: { formData: FormData; onChange: (d: Partial<FormData>) => void }) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [gpsFound, setGpsFound] = useState(false)
+  const { showToast } = useToast()
 
   const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
     if (!files.length) return
-    const newPhotos = [...formData.photos, ...files]
-    const newPreviews = [...formData.photoPreviewUrls, ...files.map(f => URL.createObjectURL(f))]
+
+    let newPhotos = [...formData.photos, ...files]
+    let newPreviews = [...formData.photoPreviewUrls, ...files.map(f => URL.createObjectURL(f))]
+
+    if (newPhotos.length > 5) {
+      showToast({ type: 'warning', title: 'Perhatian', message: 'Maksimal 5 foto yang dapat diunggah. Foto yang berlebih akan diabaikan.' })
+      newPhotos = newPhotos.slice(0, 5)
+      newPreviews = newPreviews.slice(0, 5)
+    }
+
     const update: Partial<FormData> = { photos: newPhotos, photoPreviewUrls: newPreviews }
 
     // Try extract GPS from first photo
@@ -393,11 +403,11 @@ function StepDetail({ formData, onChange }: { formData: FormData; onChange: (d: 
       <div>
         <p className="text-xs text-navy-400 italic mb-3">Pastikan foto yang diunggah terlihat jelas seperti referensi berikut:</p>
         <div className="grid grid-cols-2 gap-3">
-          <div className="bg-navy-100 rounded-xl aspect-video flex items-center justify-center">
-            <ImageIcon size={24} className="text-navy-300" />
+          <div className="bg-navy-100 rounded-xl aspect-video flex items-center justify-center overflow-hidden">
+            <img src="/reference_road_1.png" alt="Referensi 1" className="w-full h-full object-cover" />
           </div>
-          <div className="bg-navy-100 rounded-xl aspect-video flex items-center justify-center">
-            <ImageIcon size={24} className="text-navy-300" />
+          <div className="bg-navy-100 rounded-xl aspect-video flex items-center justify-center overflow-hidden">
+            <img src="/reference_road_2.png" alt="Referensi 2" className="w-full h-full object-cover" />
           </div>
         </div>
       </div>
@@ -411,6 +421,7 @@ function StepDetail({ formData, onChange }: { formData: FormData; onChange: (d: 
 
 export default function LaporPage() {
   const navigate = useNavigate()
+  const { showToast } = useToast()
   const [currentStep, setCurrentStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState<FormData>({
@@ -423,10 +434,24 @@ export default function LaporPage() {
     setFormData((prev) => ({ ...prev, ...data }))
   }, [])
 
-  const goNext = () => { if (currentStep < 3) setCurrentStep((s) => s + 1) }
+  const goNext = () => {
+    if (currentStep === 1 && formData.photos.length === 0) {
+      showToast({ type: 'warning', title: 'Perhatian', message: 'Silakan unggah minimal 1 foto laporan terlebih dahulu.' })
+      return
+    }
+    if (currentStep === 2 && (!formData.area || !formData.namaJalan)) {
+      showToast({ type: 'warning', title: 'Perhatian', message: 'Pastikan titik lokasi di peta, area kecamatan, dan detail nama jalan sudah terisi lengkap.' })
+      return
+    }
+    if (currentStep < 3) setCurrentStep((s) => s + 1)
+  }
   const goBack = () => { if (currentStep > 1) setCurrentStep((s) => s - 1) }
 
   const handleSubmit = async () => {
+    if (!formData.jenisKerusakan) {
+      showToast({ type: 'warning', title: 'Perhatian', message: 'Pilih salah satu jenis kerusakan terlebih dahulu.' })
+      return
+    }
     if (!formData.photos.length) return
     setLoading(true)
     try {
@@ -442,7 +467,7 @@ export default function LaporPage() {
       await api.post('/reports', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
       navigate('/progres')
     } catch {
-      alert('Gagal mengirim laporan. Coba lagi.')
+      showToast({ type: 'error', title: 'Gagal', message: 'Gagal mengirim laporan. Coba lagi.' })
     } finally {
       setLoading(false)
     }

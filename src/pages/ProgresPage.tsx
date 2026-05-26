@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link } from 'react-router-dom'
-import { FileText, Clock, CheckCircle2, XCircle, MapPin, Calendar, User } from 'lucide-react'
+import { FileText, Clock, CheckCircle2, XCircle, MapPin, Calendar, User, ChevronDown, ChevronUp } from 'lucide-react'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 import api from '@/lib/api'
@@ -14,15 +14,23 @@ interface Report {
   jenisKerusakan: string | null
   deskripsi: string | null
   status: string
+  ratingKecepatan: number | null
+  ratingKualitas: number | null
+  jalanLayak: boolean | null
+  ratingKomunikasi: number | null
+  kepuasan: string | null
+  kritikSaran: string | null
   createdAt: string
   userId: string | null
   user: { id: string; nama: string } | null
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: string; icon: React.ElementType }> = {
-  terkirim: { label: 'Terkirim', color: 'text-teal-700', bgColor: 'bg-teal-50 border-teal-200', icon: CheckCircle2 },
-  proses: { label: 'Dalam Proses', color: 'text-amber-700', bgColor: 'bg-amber-50 border-amber-200', icon: Clock },
-  gagal: { label: 'Gagal', color: 'text-red-700', bgColor: 'bg-red-50 border-red-200', icon: XCircle },
+  gagal_terkirim: { label: 'Gagal Terkirim', color: 'text-red-700', bgColor: 'bg-red-50 border-red-200', icon: XCircle },
+  terkirim_pending: { label: 'Terkirim - Pending', color: 'text-amber-700', bgColor: 'bg-amber-50 border-amber-200', icon: Clock },
+  terkirim_in_progress: { label: 'Terkirim - In-Progress', color: 'text-blue-700', bgColor: 'bg-blue-50 border-blue-200', icon: Clock },
+  terkirim_rejected: { label: 'Terkirim - Rejected', color: 'text-gray-700', bgColor: 'bg-gray-100 border-gray-300', icon: XCircle },
+  terkirim_solved: { label: 'Terkirim - Solved', color: 'text-green-700', bgColor: 'bg-green-50 border-green-200', icon: CheckCircle2 },
 }
 
 function formatDate(dateStr: string) {
@@ -35,6 +43,12 @@ export default function ProgresPage() {
   const [reports, setReports] = useState<Report[]>([])
   const [loading, setLoading] = useState(true)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  
+  const [expandedDesc, setExpandedDesc] = useState<Record<string, boolean>>({})
+
+  const toggleDesc = (id: string) => {
+    setExpandedDesc(prev => ({ ...prev, [id]: !prev[id] }))
+  }
 
   useEffect(() => {
     // Get current user id if logged in
@@ -104,7 +118,7 @@ export default function ProgresPage() {
             <div className="space-y-4">
               <AnimatePresence>
                 {reports.map((report, index) => {
-                  const config = STATUS_CONFIG[report.status] || STATUS_CONFIG.terkirim
+                  const config = STATUS_CONFIG[report.status] || STATUS_CONFIG.terkirim_pending
                   const StatusIcon = config.icon
                   const isOwn = currentUserId && report.userId === currentUserId
 
@@ -116,7 +130,7 @@ export default function ProgresPage() {
                         <div className="flex gap-4">
                           {/* Photo */}
                           <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0 bg-navy-100">
-                            <img src={report.fotoUrl} alt="Foto laporan" className="w-full h-full object-cover" loading="lazy" />
+                            <img src={report.fotoUrl ? report.fotoUrl.split(',')[0] : ''} alt="Foto laporan" className="w-full h-full object-cover" loading="lazy" />
                           </div>
 
                           {/* Info */}
@@ -138,7 +152,29 @@ export default function ProgresPage() {
                             </div>
 
                             {report.deskripsi && (
-                              <p className="text-xs text-navy-500 mt-2 line-clamp-2">{report.deskripsi}</p>
+                              <div className="mt-2">
+                                <button 
+                                  onClick={() => toggleDesc(report.id)}
+                                  className="flex items-center gap-1 text-xs font-medium text-navy-600 hover:text-navy-800 transition-colors"
+                                >
+                                  {expandedDesc[report.id] ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                                  {expandedDesc[report.id] ? 'Tutup Deskripsi' : 'Lihat Deskripsi'}
+                                </button>
+                                <AnimatePresence>
+                                  {expandedDesc[report.id] && (
+                                    <motion.div
+                                      initial={{ height: 0, opacity: 0 }}
+                                      animate={{ height: 'auto', opacity: 1 }}
+                                      exit={{ height: 0, opacity: 0 }}
+                                      className="overflow-hidden"
+                                    >
+                                      <p className="text-xs text-navy-500 mt-2 p-3 bg-navy-50 rounded-xl border border-navy-100 whitespace-pre-line">
+                                        {report.deskripsi}
+                                      </p>
+                                    </motion.div>
+                                  )}
+                                </AnimatePresence>
+                              </div>
                             )}
 
                             <div className="flex items-center gap-3 mt-2">
@@ -153,6 +189,15 @@ export default function ProgresPage() {
                               {isOwn && (
                                 <span className="px-2 py-0.5 rounded-full bg-teal-100 text-teal-700 text-[10px] font-bold">Laporan Anda</span>
                               )}
+                            </div>
+
+                            <div className="mt-4 pt-3 border-t border-navy-100 flex justify-end">
+                              <Link
+                                to={`/progres/${report.id}`}
+                                className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-teal-500 to-teal-600 text-white font-semibold text-xs rounded-xl shadow-md shadow-teal-600/10 hover:from-teal-600 hover:to-teal-700 active:scale-[0.98] transition-all"
+                              >
+                                Lihat Jawaban
+                              </Link>
                             </div>
                           </div>
                         </div>
