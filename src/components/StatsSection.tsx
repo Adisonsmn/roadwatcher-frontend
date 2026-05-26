@@ -1,6 +1,8 @@
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { ClipboardList, CheckCircle2, Timer, ThumbsUp } from 'lucide-react'
 import { useCountUp } from '@/hooks/useCountUp'
+import api from '@/lib/api'
 
 function StatCard({
   icon: Icon,
@@ -83,6 +85,94 @@ function MiniStat({
 }
 
 export default function StatsSection() {
+  const [stats, setStats] = useState({
+    laporanMasuk: 1240,
+    tuntas: 85,
+    dalamProses: 156,
+    rataRata: '24j',
+    kepuasan: '98%',
+  })
+
+  useEffect(() => {
+    async function fetchStats() {
+      try {
+        const res = await api.get('/reports')
+        const reports = res.data.reports || []
+        
+        if (reports.length > 0) {
+          // 1. Laporan Masuk Bulan ini
+          const thisMonth = new Date().getMonth()
+          const thisYear = new Date().getFullYear()
+          const reportsThisMonth = reports.filter((r: any) => {
+            const date = new Date(r.createdAt)
+            return date.getMonth() === thisMonth && date.getFullYear() === thisYear
+          }).length
+
+          // 2. Tuntas (Solved / Total)
+          const solvedReports = reports.filter((r: any) => r.status === 'terkirim_solved')
+          const tuntasPercentage = Math.round((solvedReports.length / reports.length) * 100)
+
+          // 3. Dalam Proses (In Progress)
+          const dalamProses = reports.filter((r: any) => r.status === 'terkirim_in_progress').length
+
+          // 4. Rata-Rata waktu pengerjaan
+          const solvedWithTime = solvedReports.filter((r: any) => r.tglSelesai)
+          let avgHours = 24
+          if (solvedWithTime.length > 0) {
+            let totalHours = 0
+            let count = 0
+            solvedWithTime.forEach((r: any) => {
+              const start = new Date(r.createdAt).getTime()
+              const end = new Date(r.tglSelesai).getTime()
+              if (end > start) {
+                totalHours += (end - start) / (1000 * 60 * 60)
+                count++
+              }
+            })
+            if (count > 0) {
+              avgHours = Math.round(totalHours / count)
+            }
+          }
+          const rataRataStr = avgHours > 0 ? `${avgHours}j` : '1j'
+
+          // 5. Tingkat Kepuasan Ulasan
+          const feedbackReports = reports.filter(
+            (r: any) => r.ratingKecepatan !== null || r.ratingKualitas !== null || r.ratingKomunikasi !== null
+          )
+          let satisfactionPercentage = 98
+          if (feedbackReports.length > 0) {
+            let totalScore = 0
+            let maxScore = 0
+            feedbackReports.forEach((r: any) => {
+              const count = (r.ratingKecepatan !== null ? 1 : 0) + 
+                            (r.ratingKualitas !== null ? 1 : 0) + 
+                            (r.ratingKomunikasi !== null ? 1 : 0)
+              if (count > 0) {
+                const sum = (r.ratingKecepatan || 0) + (r.ratingKualitas || 0) + (r.ratingKomunikasi || 0)
+                totalScore += sum
+                maxScore += count * 5
+              }
+            })
+            if (maxScore > 0) {
+              satisfactionPercentage = Math.round((totalScore / maxScore) * 100)
+            }
+          }
+
+          setStats({
+            laporanMasuk: reportsThisMonth,
+            tuntas: tuntasPercentage,
+            dalamProses: dalamProses,
+            rataRata: rataRataStr,
+            kepuasan: `${satisfactionPercentage}%`,
+          })
+        }
+      } catch (err) {
+        console.error('Failed to fetch real-time stats:', err)
+      }
+    }
+    fetchStats()
+  }, [])
+
   return (
     <section className="relative -mt-24 z-20 px-4">
       <div className="max-w-3xl mx-auto">
@@ -112,7 +202,7 @@ export default function StatsSection() {
             <div className="p-6 md:p-8">
               <StatCard
                 icon={ClipboardList}
-                value={1240}
+                value={stats.laporanMasuk}
                 label="Laporan Masuk"
                 sublabel="Bulan ini"
                 color="bg-navy-700"
@@ -122,7 +212,7 @@ export default function StatsSection() {
             <div className="p-6 md:p-8">
               <StatCard
                 icon={CheckCircle2}
-                value={85}
+                value={stats.tuntas}
                 suffix="%"
                 label="Tuntas"
                 sublabel="Tingkat penyelesaian"
@@ -135,7 +225,7 @@ export default function StatsSection() {
           {/* Bottom mini stats */}
           <div className="grid grid-cols-3 divide-x divide-navy-100 border-t border-navy-100 bg-navy-50/50">
             <div className="py-4 px-3">
-              <MiniStat value={156} label="Dalam Proses" delay={0.3} />
+              <MiniStat value={stats.dalamProses} label="Dalam Proses" delay={0.3} />
             </div>
             <div className="py-4 px-3 flex items-center justify-center">
               <motion.div
@@ -148,7 +238,7 @@ export default function StatsSection() {
                 <div className="flex items-center justify-center gap-1">
                   <Timer size={14} className="text-navy-400" />
                   <span className="text-xl md:text-2xl font-heading font-bold text-navy-800">
-                    24j
+                    {stats.rataRata}
                   </span>
                 </div>
                 <div className="text-[10px] font-bold tracking-widest uppercase text-navy-400 mt-0.5">
@@ -167,7 +257,7 @@ export default function StatsSection() {
                 <div className="flex items-center justify-center gap-1">
                   <ThumbsUp size={14} className="text-navy-400" />
                   <span className="text-xl md:text-2xl font-heading font-bold text-navy-800">
-                    98%
+                    {stats.kepuasan}
                   </span>
                 </div>
                 <div className="text-[10px] font-bold tracking-widest uppercase text-navy-400 mt-0.5">
